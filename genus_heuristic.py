@@ -35,8 +35,76 @@ def check_genus(G,fixed_embedding):
     return -((n-e+f-2)/2)
 
 
-
 def search_for_low_genus(G,generations, k,current_generation_embbeding):
+    
+    """
+    Input: A sagemath graph object G, and an embedding of G
+    Output: Runs a genetic algorithm searching for a low genus embedding, optimising over k randomly sampled "columns", 
+           with objective function the number of polyhedra faces, the search runs n iterations/generations. Returns the best embedding found.
+    """
+
+############# Be careful, this function runs in more than (maxDegree!)^k time (when max degree is small and k is small this is fine)
+    
+    best_embedding = current_generation_embbeding 
+    counter = 0
+    
+    best_genus = check_genus(G,best_embedding)
+
+    while counter < generations:
+
+        #if stopper == True:
+            #break
+
+        counter = counter + 1
+        Samples = []
+        
+        for i in range(10):
+        
+            sample  = random.sample(G.vertices(), k)
+            Samples.append(sample)
+
+        for vertex_sample in Samples:
+            
+            optimisation_dict = {}
+            vector_list = []
+            embeddings_to_check = []
+
+            for u in vertex_sample:
+                Options = list(it.permutations(G.neighbors(u)))
+                optimisation_dict[u] = list(Options)
+                vector_list.append(list(range(math.factorial(len(G.neighbors(u))))))
+
+            vectors = list(it.product(*vector_list))
+                
+
+            for vec in vectors:
+                
+                new_embedding = copy.copy(best_embedding)
+                index = 0
+
+                while index < k:
+
+                    new_embedding[vertex_sample[index]] = list(optimisation_dict[vertex_sample[index]][vec[index]])
+                    index = index + 1
+                    
+
+                embeddings_to_check.append(new_embedding)
+
+        
+        for embedding in embeddings_to_check:
+            new_genus = check_genus(G,embedding)
+
+            if new_genus < best_genus:
+                best_embedding  = embedding
+                best_genus = new_genus
+                
+
+    print(best_genus)
+    return best_embedding
+
+
+
+def REGsearch_for_low_genus(G,generations, k,current_generation_embbeding):
     
     """
     Input: A sagemath regular graph object G, and an embedding of G
@@ -44,7 +112,7 @@ def search_for_low_genus(G,generations, k,current_generation_embbeding):
            with objective function the number of polyhedra faces, the search runs n iterations/generations. Returns the best embedding found.
     """
 
-############# Be careful, this function runs in more than (maxDegree!)^k time (when max degree is small and k is small this is fine)
+############# Slightly optimized for regular graphs
     
     best_embedding = current_generation_embbeding 
     counter = 0
@@ -92,7 +160,6 @@ def search_for_low_genus(G,generations, k,current_generation_embbeding):
 
                 while index < k:
 
-                    # There is a bug here, when G is not regular. For now I have imposed regularity but I would like to get ride of it.
                     new_embedding[vertex_sample[index]] = list(optimisation_dict[vertex_sample[index]][vec[index]])
                     index = index + 1
                     
@@ -181,7 +248,6 @@ def number_of_polyhedral_faces(G,fixed_embedding):
         
     return number_poly_faces
 
-
 def search_for_each_vertex_incident_to_deg_faces(G,generations, k,current_generation_embbeding):
     """
     Input: A sagemath graph object G, and an embedding of G 
@@ -190,6 +256,83 @@ def search_for_each_vertex_incident_to_deg_faces(G,generations, k,current_genera
     """
 
 ############# Be careful, this function runs in more than (maxDegree!)^k time
+    
+    best_embedding = current_generation_embbeding 
+    counter = 0
+    
+    stopper = False
+
+    polyhedral_found = []
+
+    while counter < generations:
+
+        #if stopper == True:
+            #break
+
+        counter = counter + 1
+        Samples = []
+        
+        for i in range(10):
+        
+            sample  = random.sample(G.vertices(), k)
+            Samples.append(sample)
+
+        for vertex_sample in Samples:
+            
+            optimisation_dict = {}
+            vector_list = []
+            embeddings_to_check = []
+
+            for u in vertex_sample:
+                Options = list(it.permutations(G.neighbors(u)))
+                optimisation_dict[u] = list(Options)
+                vector_list.append(list(range(math.factorial(len(G.neighbors(u))))))
+
+            vectors = list(it.product(*vector_list))
+                
+
+            for vec in vectors:
+                
+                new_embedding = copy.copy(best_embedding)
+                index = 0
+
+                while index < k:
+
+                    # Bug here
+                    new_embedding[vertex_sample[index]] = list(optimisation_dict[vertex_sample[index]][vec[index]])
+                    index = index + 1
+                    
+
+                embeddings_to_check.append(new_embedding)
+
+        
+        for embedding in embeddings_to_check:
+
+            if number_of_polyhedral_faces(G,embedding) >= number_of_polyhedral_faces(G,best_embedding):
+                best_embedding  = embedding
+                print([number_of_polyhedral_faces(G,best_embedding), len(list(G.faces(embedding=best_embedding)))], end='\n')
+
+            
+            if number_of_polyhedral_faces(G,embedding) == len(list(G.faces(embedding=embedding))) and embedding not in polyhedral_found:
+                print("found a new polyhedral embedding \n")
+                print(embedding)
+                polyhedral_found.append(embedding)
+                #stopper = True
+                #break
+                
+
+    print([best_embedding,number_of_polyhedral_faces(G,best_embedding), len(list(G.faces(embedding=best_embedding)))])
+    return polyhedral_found
+
+
+def REGsearch_for_each_vertex_incident_to_deg_faces(G,generations, k,current_generation_embbeding):
+    """
+    Input: A sagemath graph object G, and an embedding of G 
+    Output: Runs a genetic algorithm searching for a polyhedral embedding, optimising over k randomly sampled "columns", 
+           with objective function the number of polyhedra faces, the search runs n iterations/generations. Returns the best embedding found.
+    """
+
+############# Slightly optimized for regualr graphs
     
     best_embedding = current_generation_embbeding 
     counter = 0
@@ -237,7 +380,6 @@ def search_for_each_vertex_incident_to_deg_faces(G,generations, k,current_genera
 
                 while index < k:
 
-                    # Bug here
                     new_embedding[vertex_sample[index]] = list(optimisation_dict[vertex_sample[index]][vec[index]])
                     index = index + 1
                     
